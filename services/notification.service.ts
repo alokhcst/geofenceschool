@@ -80,17 +80,34 @@ export class NotificationService {
    */
   private async registerForPushNotifications(): Promise<string | null> {
     try {
+      // Skip push notifications on web
+      if (Platform.OS === 'web') {
+        console.log('Push notifications not available on web');
+        return null;
+      }
+
       if (!Device.isDevice) {
         console.log('Must use physical device for push notifications');
         return null;
       }
 
+      // Skip if projectId is not configured (placeholder value)
+      // In production, this should be set to a valid Expo project ID
+      const projectId = 'your-expo-project-id';
+      if (projectId === 'your-expo-project-id' || !projectId) {
+        console.log('Expo project ID not configured. Skipping push token registration.');
+        return null;
+      }
+
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with actual project ID
+        projectId: projectId,
       });
 
       this.expoPushToken = token.data;
-      await AsyncStorage.setItem('expoPushToken', token.data);
+      // Only save to storage if window is available (not during SSR)
+      if (typeof window !== 'undefined') {
+        await AsyncStorage.setItem('expoPushToken', token.data);
+      }
 
       // Configure Android channel
       if (Platform.OS === 'android') {
@@ -105,7 +122,8 @@ export class NotificationService {
       console.log('Push token:', token.data);
       return token.data;
     } catch (error) {
-      console.error('Register for push notifications error:', error);
+      // Silently handle push notification errors - they're not critical for app functionality
+      console.log('Push notification registration skipped:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   }
@@ -287,6 +305,68 @@ export class NotificationService {
       await Notifications.setBadgeCountAsync(0);
     } catch (error) {
       console.error('Clear badge error:', error);
+    }
+  }
+
+  /**
+   * Send pickup confirmation notification to parent
+   */
+  async sendPickupConfirmationToParent(
+    studentName: string,
+    schoolName: string,
+    pickupTime: Date
+  ): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '✅ Pickup Confirmed',
+          body: `${studentName} has been successfully picked up from ${schoolName} at ${pickupTime.toLocaleTimeString()}`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: {
+            type: 'pickup_confirmation',
+            studentName,
+            schoolName,
+            pickupTime: pickupTime.toISOString(),
+          },
+        },
+        trigger: null, // Send immediately
+      });
+    } catch (error) {
+      console.error('Send pickup confirmation to parent error:', error);
+    }
+  }
+
+  /**
+   * Send pickup notification to school/admin
+   */
+  async sendPickupNotificationToSchool(
+    parentName: string,
+    studentName: string,
+    studentGrade: string,
+    schoolName: string,
+    pickupTime: Date
+  ): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '📋 Pickup Completed',
+          body: `${parentName} picked up ${studentName} (${studentGrade}) from ${schoolName}`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: {
+            type: 'pickup_school_notification',
+            parentName,
+            studentName,
+            studentGrade,
+            schoolName,
+            pickupTime: pickupTime.toISOString(),
+          },
+        },
+        trigger: null, // Send immediately
+      });
+    } catch (error) {
+      console.error('Send pickup notification to school error:', error);
     }
   }
 }

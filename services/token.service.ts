@@ -51,8 +51,14 @@ export class TokenService {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
 
-      // Generate QR code data
+      // Generate QR code data (must be URL format)
       const qrData = await this.generateQRCodeData(user.id, studentId, schoolId, now);
+      
+      // Verify the QR code data is in URL format
+      if (!qrData.startsWith('geofenceschool://')) {
+        console.error('ERROR: QR code data is not in URL format!', qrData.substring(0, 50));
+        throw new Error('Failed to generate QR code URL');
+      }
 
       const token: PickupToken = {
         id: this.generateTokenId(),
@@ -64,6 +70,8 @@ export class TokenService {
         isUsed: false,
         qrCodeData: qrData,
       };
+      
+      console.log('Token generated with QR URL:', qrData.substring(0, 80) + '...');
 
       // Store token
       await this.saveToken(token);
@@ -107,7 +115,19 @@ export class TokenService {
     const qrData = JSON.stringify(payload);
     
     // Base64 encode for QR code (React Native compatible)
-    return base64Encode(qrData);
+    const base64Data = base64Encode(qrData);
+    
+    // Create deep link URL that opens validator page when scanned
+    // Format: geofenceschool://validator?token=<base64data>
+    const deepLinkUrl = `geofenceschool://validator?token=${encodeURIComponent(base64Data)}`;
+    
+    // Log the generated URL for debugging
+    console.log('Generated QR Code URL:', deepLinkUrl);
+    console.log('URL length:', deepLinkUrl.length);
+    
+    // Return the deep link URL so scanning opens the validator page
+    // The validator will extract the token from the URL
+    return deepLinkUrl;
   }
 
   /**
@@ -201,8 +221,36 @@ export class TokenService {
     error?: string;
   }> {
     try {
+      let tokenData = qrCodeData;
+      
+      // If it's a deep link URL, extract the token parameter
+      if (qrCodeData.startsWith('geofenceschool://') || qrCodeData.includes('validator?token=')) {
+        try {
+          // Handle deep link URL format: geofenceschool://validator?token=<data>
+          const urlString = qrCodeData.replace('geofenceschool://', 'https://');
+          const url = new URL(urlString);
+          const tokenParam = url.searchParams.get('token');
+          if (tokenParam) {
+            tokenData = decodeURIComponent(tokenParam);
+          } else {
+            // Try manual extraction if URL parsing fails
+            const match = qrCodeData.match(/[?&]token=([^&]+)/);
+            if (match) {
+              tokenData = decodeURIComponent(match[1]);
+            }
+          }
+        } catch (error) {
+          // If URL parsing fails, try manual extraction
+          const match = qrCodeData.match(/[?&]token=([^&]+)/);
+          if (match) {
+            tokenData = decodeURIComponent(match[1]);
+          }
+          // If no match, use original data (might be raw base64)
+        }
+      }
+      
       // Decode QR data (React Native compatible)
-      const decoded = base64Decode(qrCodeData);
+      const decoded = base64Decode(tokenData);
       const payload = JSON.parse(decoded);
 
       // Check expiration
@@ -225,6 +273,8 @@ export class TokenService {
           studentId: payload.studentId,
           userId: payload.userId,
           schoolId: payload.schoolId,
+          timestamp: payload.timestamp,
+          version: payload.version,
         },
       };
     } catch (error) {

@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
+import LocationMap from '@/components/location-map';
+import UserMenu from '@/components/user-menu';
+import { SCHOOLS } from '@/config/aws-config';
 import AuthService, { UserProfile } from '@/services/auth.service';
 import GeofencingService from '@/services/geofencing.service';
 import NotificationService from '@/services/notification.service';
-import { SCHOOLS } from '@/config/aws-config';
-import UserMenu from '@/components/user-menu';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function HomeScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -222,6 +223,39 @@ export default function HomeScreen() {
             <Text style={styles.cardSubtitle}>See if you're near a school</Text>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push('/validator')}
+        >
+          <Text style={styles.cardIcon}>📷</Text>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Barcode Validator</Text>
+            <Text style={styles.cardSubtitle}>Scan and validate pickup codes</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push('/pickup-board')}
+        >
+          <Text style={styles.cardIcon}>📋</Text>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Pickup Board</Text>
+            <Text style={styles.cardSubtitle}>View checked-in parents queue</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push('/stats')}
+        >
+          <Text style={styles.cardIcon}>📊</Text>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Statistics</Text>
+            <Text style={styles.cardSubtitle}>View pickup stats and KPIs</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Geofence Monitoring */}
@@ -250,6 +284,32 @@ export default function HomeScreen() {
               ? 'We\'re monitoring your location and will notify you when you approach the school.'
               : 'Enable monitoring to automatically receive notifications when you reach the school.'}
           </Text>
+          
+          {/* Map with School Location and Geofence */}
+          {SCHOOLS.length > 0 && (
+            <View style={styles.mapContainer}>
+              <LocationMap
+                schoolLatitude={SCHOOLS[0].geofence.latitude}
+                schoolLongitude={SCHOOLS[0].geofence.longitude}
+                geofenceRadius={500}
+                height={300}
+              />
+              <View style={styles.mapLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#007AFF' }]} />
+                  <Text style={styles.legendText}>School Location</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: 'transparent', borderWidth: 3, borderColor: '#007AFF' }]} />
+                  <Text style={styles.legendText}>500m Geofence</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={styles.legendText}>Your Location</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </View>
 
@@ -397,6 +457,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+    marginBottom: 16,
+  },
+  mapContainer: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  mapLegend: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#f9f9f9',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666',
   },
   studentCard: {
     flexDirection: 'row',

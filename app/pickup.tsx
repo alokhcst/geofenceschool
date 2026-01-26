@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Modal,
-} from 'react-native';
-import { router } from 'expo-router';
-import TokenService, { PickupToken } from '@/services/token.service';
-import AuthService from '@/services/auth.service';
 import QRCodeDisplay from '@/components/qr-code-display';
+import AuthService from '@/services/auth.service';
+import TokenService, { PickupToken } from '@/services/token.service';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function PickupScreen() {
   const [loading, setLoading] = useState(false);
@@ -82,6 +82,14 @@ export default function PickupScreen() {
     setShowQRCode(false);
     setCurrentToken(null);
   };
+
+  // Debug: Log token when generated
+  useEffect(() => {
+    if (currentToken && __DEV__) {
+      console.log('Current token QR data:', currentToken.qrCodeData);
+      console.log('Is URL format?', currentToken.qrCodeData.startsWith('geofenceschool://'));
+    }
+  }, [currentToken]);
 
   if (showQRCode && currentToken) {
     return (

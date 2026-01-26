@@ -115,6 +115,12 @@ export default function QRCodeDisplay({ token, onExpired, onClose }: QRCodeDispl
             logoSize={0}
           />
         </View>
+        {/* Debug: Log what's in the QR code */}
+        {__DEV__ && (
+          <Text style={{ fontSize: 10, color: '#999', marginTop: 8, textAlign: 'center' }}>
+            QR contains: {token.qrCodeData.substring(0, 50)}...
+          </Text>
+        )}
       </View>
 
       <View style={styles.infoContainer}>
@@ -138,8 +144,18 @@ export default function QRCodeDisplay({ token, onExpired, onClose }: QRCodeDispl
             1. Show this code to school staff{'\n'}
             2. Keep your screen brightness high{'\n'}
             3. Hold still while they scan{'\n'}
-            4. Code will expire after use or timeout
+            4. Scanning will open the validator page automatically{'\n'}
+            5. Code will expire after use or timeout
           </Text>
+          {__DEV__ && (
+            <View style={{ marginTop: 12, padding: 8, backgroundColor: '#f0f0f0', borderRadius: 4 }}>
+              <Text style={{ fontSize: 10, color: '#666', fontFamily: 'monospace' }}>
+                QR contains URL: {token.qrCodeData.startsWith('geofenceschool://') ? '✓ Yes' : '✗ No'}
+                {'\n'}
+                Preview: {token.qrCodeData.substring(0, 60)}...
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
