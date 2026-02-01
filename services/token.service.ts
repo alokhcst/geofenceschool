@@ -54,8 +54,12 @@ export class TokenService {
       // Generate QR code data (must be URL format)
       const qrData = await this.generateQRCodeData(user.id, studentId, schoolId, now);
       
-      // Verify the QR code data is in URL format
-      if (!qrData.startsWith('geofenceschool://')) {
+      // Verify the QR code data is in URL format (web URL or deep link)
+      const isValidUrl = qrData.startsWith('http://') || 
+                        qrData.startsWith('https://') || 
+                        qrData.startsWith('geofenceschool://');
+      
+      if (!isValidUrl) {
         console.error('ERROR: QR code data is not in URL format!', qrData.substring(0, 50));
         throw new Error('Failed to generate QR code URL');
       }
@@ -117,17 +121,37 @@ export class TokenService {
     // Base64 encode for QR code (React Native compatible)
     const base64Data = base64Encode(qrData);
     
-    // Create deep link URL that opens validator page when scanned
-    // Format: geofenceschool://validator?token=<base64data>
-    const deepLinkUrl = `geofenceschool://validator?token=${encodeURIComponent(base64Data)}`;
+    // Create web URL that opens validator page when scanned
+    // For web compatibility, use a web URL format
+    // In production, replace with your actual domain
+    // For development, use localhost or the current host
+    let baseUrl = 'https://geofenceschool.app';
+    
+    // Check if running in web environment
+    if (typeof window !== 'undefined' && window.location) {
+      const hostname = window.location.hostname;
+      const port = window.location.port;
+      const protocol = window.location.protocol;
+      
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168.')) {
+        // Development/local network
+        baseUrl = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+      } else if (hostname) {
+        // Production or staging
+        baseUrl = `${protocol}//${hostname}${port ? ':' + port : ''}`;
+      }
+    }
+    
+    // Format: https://yourdomain.com/validator?token=<base64data>
+    const webUrl = `${baseUrl}/validator?token=${encodeURIComponent(base64Data)}`;
     
     // Log the generated URL for debugging
-    console.log('Generated QR Code URL:', deepLinkUrl);
-    console.log('URL length:', deepLinkUrl.length);
+    console.log('Generated QR Code URL:', webUrl);
+    console.log('URL length:', webUrl.length);
     
-    // Return the deep link URL so scanning opens the validator page
+    // Return the web URL so scanning opens the validator page in browser
     // The validator will extract the token from the URL
-    return deepLinkUrl;
+    return webUrl;
   }
 
   /**
@@ -223,8 +247,12 @@ export class TokenService {
     try {
       let tokenData = qrCodeData;
       
-      // If it's a deep link URL, extract the token parameter
-      if (qrCodeData.startsWith('geofenceschool://') || qrCodeData.includes('validator?token=')) {
+      // If it's a URL (deep link or web URL), extract the token parameter
+      if (qrCodeData.startsWith('geofenceschool://') || 
+          qrCodeData.startsWith('http://') || 
+          qrCodeData.startsWith('https://') ||
+          qrCodeData.includes('validator?token=') ||
+          qrCodeData.includes('/validator?token=')) {
         try {
           // Handle deep link URL format: geofenceschool://validator?token=<data>
           const urlString = qrCodeData.replace('geofenceschool://', 'https://');

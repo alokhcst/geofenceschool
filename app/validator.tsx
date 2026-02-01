@@ -217,14 +217,20 @@ export default function ValidatorScreen() {
       return;
     }
 
-    // Check if app was opened via deep link
+    // Check if app was opened via deep link or web URL
     const checkInitialURL = async () => {
       try {
         const initialUrl = await Linking.getInitialURL();
         if (initialUrl) {
           console.log('App opened with URL:', initialUrl);
           const parsed = Linking.parse(initialUrl);
-          if (parsed.path === 'validator' && parsed.queryParams?.token) {
+          
+          // Handle both deep links (geofenceschool://) and web URLs (http/https)
+          const isValidatorPath = parsed.path === 'validator' || 
+                                  parsed.path?.includes('/validator') ||
+                                  initialUrl.includes('/validator');
+          
+          if (isValidatorPath && parsed.queryParams?.token) {
             const token = Array.isArray(parsed.queryParams.token)
               ? parsed.queryParams.token[0]
               : parsed.queryParams.token;
@@ -232,6 +238,16 @@ export default function ValidatorScreen() {
               console.log('Token found in initial URL:', token);
               handleDeepLinkToken(token);
             }
+          }
+        }
+        
+        // Also check browser URL if on web
+        if (typeof window !== 'undefined' && window.location) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const tokenParam = urlParams.get('token');
+          if (tokenParam && window.location.pathname.includes('validator')) {
+            console.log('Token found in browser URL:', tokenParam);
+            handleDeepLinkToken(tokenParam);
           }
         }
       } catch (error) {
@@ -245,7 +261,13 @@ export default function ValidatorScreen() {
     const handleDeepLink = (event: { url: string }) => {
       console.log('Deep link received:', event.url);
       const parsed = Linking.parse(event.url);
-      if (parsed.path === 'validator' && parsed.queryParams?.token) {
+      
+      // Handle both deep links (geofenceschool://) and web URLs (http/https)
+      const isValidatorPath = parsed.path === 'validator' || 
+                              parsed.path?.includes('/validator') ||
+                              event.url.includes('/validator');
+      
+      if (isValidatorPath && parsed.queryParams?.token) {
         const token = Array.isArray(parsed.queryParams.token)
           ? parsed.queryParams.token[0]
           : parsed.queryParams.token;
@@ -270,13 +292,23 @@ export default function ValidatorScreen() {
     setScanning(true);
 
     try {
-      // Check if data is a deep link URL
+      // Check if data is a URL (deep link or web URL)
       let tokenData = data;
       
       // If it's a URL, extract the token parameter
-      if (data.startsWith('geofenceschool://') || data.includes('validator?token=')) {
+      if (data.startsWith('geofenceschool://') || 
+          data.startsWith('http://') || 
+          data.startsWith('https://') ||
+          data.includes('validator?token=') ||
+          data.includes('/validator?token=')) {
         try {
-          const url = new URL(data.replace('geofenceschool://', 'https://'));
+          // Normalize the URL for parsing
+          let urlString = data;
+          if (data.startsWith('geofenceschool://')) {
+            urlString = data.replace('geofenceschool://', 'https://');
+          }
+          
+          const url = new URL(urlString);
           const tokenParam = url.searchParams.get('token');
           if (tokenParam) {
             tokenData = decodeURIComponent(tokenParam);

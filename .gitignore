@@ -2,6 +2,15 @@
 
 # dependencies
 node_modules/
+# Build outputs
+web-build/
+dist/
+build/
+
+# AWS
+tmp-bucket-policy.json
+*.pem
+.aws/
 
 # Expo
 .expo/

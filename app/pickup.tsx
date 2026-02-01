@@ -87,7 +87,10 @@ export default function PickupScreen() {
   useEffect(() => {
     if (currentToken && __DEV__) {
       console.log('Current token QR data:', currentToken.qrCodeData);
-      console.log('Is URL format?', currentToken.qrCodeData.startsWith('geofenceschool://'));
+      const isUrlFormat = currentToken.qrCodeData.startsWith('http://') || 
+                          currentToken.qrCodeData.startsWith('https://') || 
+                          currentToken.qrCodeData.startsWith('geofenceschool://');
+      console.log('Is URL format?', isUrlFormat);
     }
   }, [currentToken]);
 
